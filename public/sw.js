@@ -99,3 +99,55 @@ define(['./workbox-e43f5367'], (function (workbox) { 'use strict';
 
 }));
 //# sourceMappingURL=sw.js.map
+
+
+const CACHE_NAME = 'my-site-cache-v1';
+self.addEventListener('install', event => {
+  event.waitUntil(
+     caches.open(CACHE_NAME).then(cache => {
+       return cache.addAll([
+        '/',
+        '/_next/static/chunks/main.js',
+        '/_next/static/chunks/main.css',
+         // Add all other resources you want to cache
+       ]);
+     })
+  );
+ });
+
+ self.addEventListener('fetch', event => {
+  event.respondWith(
+     (async () => {
+       // Check if the user is online
+       if (navigator.onLine) {
+         // Attempt to fetch from the network
+         try {
+           const networkResponse = await fetch(event.request);
+           // Cache the fetched resource
+           const cache = await caches.open(CACHE_NAME);
+           cache.put(event.request, networkResponse.clone());
+           return networkResponse;
+         } catch (error) {
+           // If fetching from the network fails, fall back to the cache
+           return caches.match(event.request).then(cachedResponse => {
+             if (cachedResponse) {
+               return cachedResponse;
+             }
+             // If the resource is not in the cache, return the offline page
+             return caches.match('/offline.html');
+           });
+         }
+       } else {
+         // If the user is offline, attempt to serve from the cache
+         return caches.match(event.request).then(cachedResponse => {
+           if (cachedResponse) {
+             return cachedResponse;
+           }
+           // If the resource is not in the cache, return the offline page
+           return caches.match('/offline.html');
+         });
+       }
+     })()
+  );
+ });
+ 
